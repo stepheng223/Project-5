@@ -1,199 +1,196 @@
-/* -------------------------------------------------
-   GLOBAL STYLING
--------------------------------------------------- */
+/* ----------------------------------------------
+   GLOBAL WRAPPER
+---------------------------------------------- */
 body {
+  background: linear-gradient(135deg, #1b1f3b, #2b5876);
+  min-height: 100vh;
   margin: 0;
-  padding: 0;
-  font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #2b2d42, #1c1e29);
-  color: #fff;
-}
-
-.wrapper {
+  font-family: "Inter", sans-serif;
   display: flex;
   justify-content: center;
-  padding: 40px 20px;
+  align-items: flex-start;
+  padding-top: 40px;
+  color: white;
 }
 
-/* -------------------------------------------------
-   GLASS CARD
--------------------------------------------------- */
+/* ----------------------------------------------
+   CARD (Glassmorphism)
+---------------------------------------------- */
 .glass-card {
   width: 90%;
-  max-width: 650px;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 30px;
-  border-radius: 18px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-  text-align: center;
+  max-width: 500px;
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 22px;
+  padding: 25px 30px;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+  animation: fadeIn 0.8s ease;
 }
 
-/* -------------------------------------------------
-   TITLES
--------------------------------------------------- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .title {
-  font-size: 2.4rem;
+  font-size: 32px;
+  text-align: center;
   font-weight: 700;
   margin-bottom: 15px;
-  letter-spacing: 1px;
 }
 
-.subheader {
-  margin-top: 25px;
-  font-size: 1.4rem;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-  padding-bottom: 6px;
-  width: 100%;
-  text-align: left;
-}
-
-/* -------------------------------------------------
+/* ----------------------------------------------
    BUTTONS
--------------------------------------------------- */
+---------------------------------------------- */
 .btn {
-  padding: 12px 20px;
-  border-radius: 10px;
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
   border: none;
+  font-size: 18px;
+  border-radius: 12px;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 8px 0;
-  transition: 0.2s ease-in-out;
+  transition: 0.25s;
 }
 
 .btn.start {
-  background: #4caf50;
-  color: white;
+  background: #4ad295;
+  color: #002a14;
+  font-weight: 700;
+}
+
+.btn.start:hover {
+  background: #6bf0b2;
 }
 
 .btn.stop {
-  background: #e63946;
+  background: #ff4b4b;
   color: white;
+  font-weight: 700;
+}
+
+.btn.stop:hover {
+  background: #ff6b6b;
 }
 
 .btn.submit {
-  background: #0077ff;
+  background: #5c7cfa;
   color: white;
+  font-weight: 700;
+  width: 120px;
 }
 
-.btn:hover {
-  transform: scale(1.05);
-  opacity: 0.9;
+.btn.submit:hover {
+  background: #7b97ff;
 }
 
-.btn.disabled {
-  background: grey;
-  cursor: not-allowed;
-}
 
-/* -------------------------------------------------
-   TIMER DISPLAY
--------------------------------------------------- */
+/* ----------------------------------------------
+   TIMER
+---------------------------------------------- */
 .timer-box {
-  margin: 18px 0;
-  font-size: 1.3rem;
+  margin-top: 15px;
+  font-size: 20px;
+  text-align: center;
 }
 
 .timer-value {
-  font-size: 2rem;
+  font-size: 28px;
   font-weight: bold;
-  margin-top: 4px;
+  color: #ffd56b;
 }
 
-/* -------------------------------------------------
-   BOGGLE BOARD
--------------------------------------------------- */
+/* ----------------------------------------------
+   BOARD
+---------------------------------------------- */
 .board {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin: 20px 0;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
 }
 
 .tile {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(10px);
-  padding: 22px 0;
+  width: 60px;
+  height: 60px;
+  background: rgba(255,255,255,0.18);
   border-radius: 12px;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  font-weight: bold;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: transform 0.15s ease;
 }
 
-/* -------------------------------------------------
-   INPUT FIELD
--------------------------------------------------- */
+.tile:hover {
+  transform: scale(1.1);
+}
+
+/* ----------------------------------------------
+   WORD INPUT
+---------------------------------------------- */
 .input-row {
   display: flex;
+  justify-content: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-top: 20px;
 }
 
 .word-input {
-  flex: 1;
-  padding: 12px;
+  width: 100%;
+  padding: 10px 14px;
   border-radius: 10px;
   border: none;
-  font-size: 1.1rem;
+  font-size: 16px;
 }
 
-/* -------------------------------------------------
-   MESSAGE TEXT
--------------------------------------------------- */
+/* ----------------------------------------------
+   MESSAGES
+---------------------------------------------- */
 .message {
-  margin-top: 5px;
-  font-size: 1.1rem;
-  font-weight: 500;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 18px;
 }
 
-/* -------------------------------------------------
-   WORD LISTS
--------------------------------------------------- */
+/* ----------------------------------------------
+   LISTS
+---------------------------------------------- */
+.subheader {
+  margin-top: 25px;
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .word-list {
+  background: rgba(255,255,255,0.1);
+  padding: 12px;
+  border-radius: 12px;
   list-style: none;
-  padding-left: 0;
-  margin-top: 12px;
-  text-align: left;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 10px;
 }
 
 .word-list li {
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.15);
-  margin-bottom: 6px;
-  border-radius: 8px;
+  padding: 5px 0;
+  font-size: 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.word-list li:last-child {
+  border-bottom: none;
 }
 
 .missed {
-  color: #ff7777;
-  font-weight: 600;
-}
-
-/* -------------------------------------------------
-   SAVED GAME SECTION
--------------------------------------------------- */
-.saved-game-card {
-  margin-top: 25px;
-  background: rgba(255,255,255,0.1);
-  padding: 15px;
-  border-radius: 12px;
-}
-
-.save-input {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  margin-top: 10px;
-  font-size: 1rem;
-}
-
-.saved-game-entry {
-  background: rgba(255,255,255,0.15);
-  padding: 10px;
-  border-radius: 8px;
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  color: #ff9e9e;
 }
