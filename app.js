@@ -1,52 +1,57 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 
-const API_BASE = "https://chancecantina-egyptrent-8000.codio.io/api";
+/* ---------------------------------------
+   GAME STATES
+---------------------------------------- */
+const GAME_STATE = {
+  NOT_STARTED: 0,
+  IN_PROGRESS: 1,
+  FINISHED: 2,
+};
 
-/* -----------------------------
-   Generate random 4x4 board
------------------------------- */
-function generateBoard() {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const newBoard = [];
-  for (let i = 0; i < 4; i++) {
-    const row = [];
-    for (let j = 0; j < 4; j++) {
-      row.push(letters[Math.floor(Math.random() * letters.length)]);
-    }
-    newBoard.push(row);
-  }
-  return newBoard;
-}
+/* ---------------------------------------
+   HELPER FUNCTION: Convert Django List String → Array
+---------------------------------------- */
+const Convert = (s) => {
+  if (!s) return [];
+  s = s.replace(/'/g, ""); // remove quotes
+  s = s.replace("[", "").replace("]", "");
+  return s
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t !== "");
+};
 
-/* -----------------------------
-   Check if word exists on board
------------------------------- */
+/* ---------------------------------------
+   BOGGLE WORD VALIDATION (no dictionary)
+---------------------------------------- */
 function wordExistsOnBoard(word, board) {
+  if (!board || board.length === 0) return false;
   word = word.toLowerCase();
+
   const rows = board.length;
   const cols = board[0].length;
+  const dirs = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1]
+  ];
 
   const visited = Array.from({ length: rows }, () =>
     Array(cols).fill(false)
   );
 
-  const dirs = [
-    [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],          [0, 1],
-    [1, -1],  [1, 0], [1, 1],
-  ];
-
-  function dfs(r, c, index) {
-    if (index === word.length) return true;
+  function dfs(r, c, i) {
+    if (i === word.length) return true;
     if (r < 0 || c < 0 || r >= rows || c >= cols) return false;
     if (visited[r][c]) return false;
-    if (board[r][c].toLowerCase() !== word[index]) return false;
+    if (board[r][c].toLowerCase() !== word[i]) return false;
 
     visited[r][c] = true;
 
-    for (const [dr, dc] of dirs) {
-      if (dfs(r + dr, c + dc, index + 1)) return true;
+    for (let [dr, dc] of dirs) {
+      if (dfs(r + dr, c + dc, i + 1)) return true;
     }
 
     visited[r][c] = false;
@@ -58,333 +63,205 @@ function wordExistsOnBoard(word, board) {
       if (dfs(r, c, 0)) return true;
     }
   }
+
   return false;
 }
 
-/* -----------------------------
-   Boggle Solver for full solution list
------------------------------- */
-function findAllBoardWords(board, dictionary) {
-  if (!board || board.length === 0) return [];
-
-  const rows = board.length;
-  const cols = board[0].length;
-
-  const dictSet = new Set(dictionary);
-  const prefixSet = new Set();
-
-  for (const w of dictionary) {
-    for (let i = 1; i <= w.length; i++) prefixSet.add(w.slice(0, i));
-  }
-
-  const results = new Set();
-  const visited = Array.from({ length: rows }, () =>
-    Array(cols).fill(false)
-  );
-
-  const dirs = [
-    [-1, -1], [-1, 0], [-1, 1],
-    [0, -1],          [0, 1],
-    [1, -1],  [1, 0], [1, 1],
-  ];
-
-  function dfs(r, c, curr) {
-    if (r < 0 || c < 0 || r >= rows || c >= cols || visited[r][c]) return;
-    curr += board[r][c].toLowerCase();
-
-    if (!prefixSet.has(curr)) return;
-
-    visited[r][c] = true;
-
-    if (curr.length >= 3 && dictSet.has(curr)) {
-      results.add(curr.toUpperCase());
-    }
-
-    for (const [dr, dc] of dirs) dfs(r + dr, c + dc, curr);
-
-    visited[r][c] = false;
-  }
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) dfs(r, c, "");
-  }
-  return Array.from(results);
-}
-
-/* -----------------------------
-   MAIN APP COMPONENT
------------------------------- */
+/* ---------------------------------------
+   MAIN APP
+---------------------------------------- */
 function App() {
-  const [started, setStarted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [board, setBoard] = useState([]);
-  const [input, setInput] = useState("");
-  const [message, setMessage] = useState("");
+  const [gameState, setGameState] = useState(GAME_STATE.NOT_STARTED);
 
-  const [dictionary, setDictionary] = useState([]);
-  const [dictReady, setDictReady] = useState(false);
-
+  const [game, setGame] = useState({});
+  const [grid, setGrid] = useState([]);
   const [allSolutions, setAllSolutions] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
   const [missedWords, setMissedWords] = useState([]);
 
-  const [savedGames, setSavedGames] = useState([]);
-  const [gameName, setGameName] = useState("");
+  const [input, setInput] = useState("");
+  const [size] = useState(4); // using 4x4 board for assignment
+  const [message, setMessage] = useState("");
+  const [timeLeft, setTimeLeft] = useState(60);
 
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [playerName, setPlayerName] = useState("");
-
-  /* ------------------------------------------
-      LOAD DICTIONARY
-  ------------------------------------------ */
+  /* ---------------------------------------
+     FETCH GAME FROM DJANGO WHEN STARTING
+  ---------------------------------------- */
   useEffect(() => {
-    fetch("full-wordlist.json")
+    if (gameState !== GAME_STATE.IN_PROGRESS) return;
+
+    const url =
+      "https://chancecantina-egyptrent-8000.codio.io/api/game/create/" +
+      size;
+
+    fetch(url)
       .then((res) => res.json())
       .then((data) => {
-        setDictionary(data.map((w) => w.toLowerCase()));
-        setDictReady(true);
-      });
-  }, []);
+        setGame(data);
 
-  /* ------------------------------------------
-      START NEW GAME
-  ------------------------------------------ */
-  const startGame = () => {
-    if (!dictReady) return;
-    const newBoard = generateBoard();
-    const solutions = findAllBoardWords(newBoard, dictionary);
+        // convert Django string grid → 2D array
+        const cleaned = data.grid.replace(/'/g, '"');
+        setGrid(JSON.parse(cleaned));
 
-    setBoard(newBoard);
-    setAllSolutions(solutions);
-    setFoundWords([]);
-    setMissedWords([]);
-    setMessage("");
-    setInput("");
-    setStarted(true);
-    setTimeLeft(60);
-  };
+        setFoundWords([]);
+        setMissedWords([]);
+        setMessage("");
+      })
+      .catch((err) => console.log(err));
+  }, [gameState, size]);
 
-  /* ------------------------------------------
-      STOP GAME → Show missed words
-  ------------------------------------------ */
-  const stopGame = () => {
-    setStarted(false);
-    const missed = allSolutions.filter((w) => !foundWords.includes(w));
-    setMissedWords(missed);
-    setMessage("Game Over!");
-  };
-
-  /* ------------------------------------------
-      TIMER
-  ------------------------------------------ */
+  /* ---------------------------------------
+     WHEN GRID or FOUNDWORDS CHANGE → UPDATE SOLUTIONS
+  ---------------------------------------- */
   useEffect(() => {
-    if (!started) return;
+    if (typeof game.foundwords !== "undefined") {
+      const converted = Convert(game.foundwords);
+      setAllSolutions(converted);
+    }
+  }, [grid, game.foundwords]);
+
+  /* ---------------------------------------
+     TIMER
+  ---------------------------------------- */
+  useEffect(() => {
+    if (gameState !== GAME_STATE.IN_PROGRESS) return;
+
     if (timeLeft <= 0) {
       stopGame();
       return;
     }
-    const t = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearInterval(t);
-  }, [started, timeLeft]);
 
-  /* ------------------------------------------
-      SUBMIT WORD
-  ------------------------------------------ */
+    const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
+    return () => clearInterval(timer);
+  }, [gameState, timeLeft]);
+
+  /* ---------------------------------------
+     START GAME
+  ---------------------------------------- */
+  const startGame = () => {
+    setTimeLeft(60);
+    setGameState(GAME_STATE.IN_PROGRESS);
+  };
+
+  /* ---------------------------------------
+     STOP GAME
+  ---------------------------------------- */
+  const stopGame = () => {
+    setGameState(GAME_STATE.FINISHED);
+
+    const missed = allSolutions.filter(
+      (w) => !foundWords.includes(w.toUpperCase())
+    );
+    setMissedWords(missed);
+  };
+
+  /* ---------------------------------------
+     SUBMIT WORD
+  ---------------------------------------- */
   const submitWord = () => {
     const word = input.trim().toUpperCase();
     setInput("");
 
-    if (!started) return setMessage("Game not running.");
-    if (!word) return setMessage("Enter a word.");
-    if (foundWords.includes(word)) return setMessage("Already found.");
-    if (!wordExistsOnBoard(word, board))
-      return setMessage("Not on this board.");
+    if (!word) return setMessage("Enter a word!");
+
+    if (foundWords.includes(word)) {
+      return setMessage("❌ Already found");
+    }
+
+    if (!wordExistsOnBoard(word, grid)) {
+      return setMessage("❌ Word NOT on board");
+    }
 
     setFoundWords([...foundWords, word]);
-    setMessage("Word added!");
+    setMessage("✔ Added!");
   };
 
-  /* ------------------------------------------
-      SAVE GAME TO DJANGO
-  ------------------------------------------ */
-  async function saveGame() {
-    if (!gameName) return alert("Enter a name for the game.");
-
-    const res = await fetch(`${API_BASE}/games/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: gameName,
-        grid: board,
-        solution_words: allSolutions,
-      }),
-    });
-
-    alert("Game saved!");
-    loadSavedGames();
-  }
-
-  /* ------------------------------------------
-      LOAD SAVED GAMES
-  ------------------------------------------ */
-  async function loadSavedGames() {
-    const res = await fetch(`${API_BASE}/games/`);
-    const data = await res.json();
-    setSavedGames(data);
-  }
-
-  /* ------------------------------------------
-      START A SAVED GAME
-  ------------------------------------------ */
-  function startSavedGame(game) {
-    setBoard(game.grid);
-    setAllSolutions(game.solution_words);
-    setFoundWords([]);
-    setMissedWords([]);
-    setMessage("");
-    setStarted(true);
-    setTimeLeft(60);
-  }
-
-  /* ------------------------------------------
-      SUBMIT SCORE TO LEADERBOARD
-  ------------------------------------------ */
-  async function submitScore() {
-    if (!playerName) return alert("Enter your name.");
-    if (!gameName) return alert("Save the game first!");
-
-    const game = savedGames.find((g) => g.name === gameName);
-    if (!game) return alert("Game not found in saved list.");
-
-    const scoreValue = foundWords.length * 10;
-
-    await fetch(`${API_BASE}/leaderboard/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        player_name: playerName,
-        score: scoreValue,
-        game: game.id,
-      }),
-    });
-
-    alert("Score submitted!");
-    loadLeaderboard();
-  }
-
-  /* ------------------------------------------
-      LOAD LEADERBOARD
-  ------------------------------------------ */
-  async function loadLeaderboard() {
-    const res = await fetch(`${API_BASE}/leaderboard/`);
-    const data = await res.json();
-    setLeaderboard(data);
-  }
-
-  /* ------------------------------------------
-      UI STARTS HERE
-  ------------------------------------------ */
+  /* ---------------------------------------
+     UI
+  ---------------------------------------- */
   return (
     <div className="wrapper">
-      <h1>Boggle Game</h1>
+      <div className="glass-card">
+        <h1 className="title">Boggle (Django Connected)</h1>
 
-      {/* START / STOP */}
-      {!started ? (
-        <button onClick={startGame}>Start Game</button>
-      ) : (
-        <button onClick={stopGame}>Stop</button>
-      )}
+        {/* START / STOP BUTTON */}
+        {gameState !== GAME_STATE.IN_PROGRESS ? (
+          <button className="btn start" onClick={startGame}>
+            Start Game
+          </button>
+        ) : (
+          <button className="btn stop" onClick={stopGame}>
+            Stop Game
+          </button>
+        )}
 
-      {/* TIMER */}
-      {started && <h2>Time Left: {timeLeft}s</h2>}
+        {/* TIMER */}
+        {gameState === GAME_STATE.IN_PROGRESS && (
+          <div className="timer-box">
+            <div>Time Left:</div>
+            <div className="timer-value">{timeLeft}s</div>
+          </div>
+        )}
 
-      {/* BOARD */}
-      {started && (
-        <div className="board">
-          {board.map((row, r) => (
-            <div className="row" key={r}>
-              {row.map((l, c) => (
-                <div className="tile" key={c}>{l}</div>
-              ))}
-            </div>
+        {/* BOARD */}
+        {grid.length > 0 && (
+          <div className="board">
+            {grid.map((row, r) => (
+              <div key={r} className="row">
+                {row.map((letter, c) => (
+                  <div key={c} className="tile">
+                    {letter}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* WORD ENTRY */}
+        {gameState === GAME_STATE.IN_PROGRESS && (
+          <div className="input-row">
+            <input
+              className="word-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Enter word..."
+            />
+            <button className="btn submit" onClick={submitWord}>
+              Submit
+            </button>
+          </div>
+        )}
+
+        {message && <p className="message">{message}</p>}
+
+        {/* FOUND WORDS */}
+        <h2 className="subheader">Words Found</h2>
+        <ul className="word-list">
+          {foundWords.map((w, i) => (
+            <li key={i}>{w}</li>
           ))}
-        </div>
-      )}
+        </ul>
 
-      {/* WORD INPUT */}
-      {started && (
-        <div>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Enter word"
-          />
-          <button onClick={submitWord}>Submit</button>
-        </div>
-      )}
+        {/* MISSED WORDS */}
+        {gameState === GAME_STATE.FINISHED && missedWords.length > 0 && (
+          <>
+            <h2 className="subheader">Missed Words</h2>
+            <ul className="word-list">
+              {missedWords.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
 
-      <p>{message}</p>
-
-      {/* SAVE GAME UI */}
-      <div>
-        <h3>Save Game</h3>
-        <input
-          value={gameName}
-          onChange={(e) => setGameName(e.target.value)}
-          placeholder="Game name..."
-        />
-        <button onClick={saveGame}>Save Game</button>
+            <h2 className="subheader">All Valid Words</h2>
+            <ul className="word-list">
+              {allSolutions.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
-
-      <hr />
-
-      {/* LOAD SAVED GAMES */}
-      <h3>Saved Games</h3>
-      <button onClick={loadSavedGames}>Refresh Saved Games</button>
-      <ul>
-        {savedGames.map((g) => (
-          <li key={g.id}>
-            {g.name}
-            <button onClick={() => startSavedGame(g)}>Start</button>
-          </li>
-        ))}
-      </ul>
-
-      <hr />
-
-      {/* LEADERBOARD */}
-      <h3>Leaderboard</h3>
-      <input
-        value={playerName}
-        onChange={(e) => setPlayerName(e.target.value)}
-        placeholder="Your name"
-      />
-      <button onClick={submitScore}>Submit Score</button>
-
-      <button onClick={loadLeaderboard}>View Leaderboard</button>
-
-      <ul>
-        {leaderboard.map((entry) => (
-          <li key={entry.id}>
-            {entry.player_name} — {entry.score} pts (Game {entry.game})
-          </li>
-        ))}
-      </ul>
-
-      {/* RESULTS */}
-      <h3>Words Found</h3>
-      <ul>
-        {foundWords.map((w, i) => (
-          <li key={i}>{w}</li>
-        ))}
-      </ul>
-
-      <h3>Missed Words</h3>
-      <ul>
-        {missedWords.map((w, i) => (
-          <li key={i}>{w}</li>
-        ))}
-      </ul>
     </div>
   );
 }
